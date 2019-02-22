@@ -26,7 +26,7 @@ Elasticsearch is a highly scalable open-source full-text search and analytics en
 
 * Shards & Replicas - Elasticsearch provides the ability to subdivide your index into multiple pieces called shards.Elasticsearch allows you to make one or more copies of your index’s shards into what are called replica shards, or replicas for short
 
-## Installation
+## Installation of Elasticsearch and Kibana
 
 To setup ELK cluster we need to instal JAVA, add ELK repo and install it. Run the below commands to install ELK stack
 
@@ -52,15 +52,29 @@ echo $JAVA_HOME
 wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
 sudo apt-get install apt-transport-https -y
 echo "deb https://artifacts.elastic.co/packages/6.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-6.x.list
-sudo apt-get update && sudo apt-get install elasticsearch -y
+sudo apt-get update && sudo apt-get install elasticsearch kibana -y
 
 # Edit cluster name, node name, network.host 
 sudo vi /etc/elasticsearch/elasticsearch.yml
+
+# Edit server.host: 0.0.0.0
+sudo vi /etc/kibana/kibana.yml
 
 # Starting elasticsearch service
 sudo systemctl daemon-reload
 sudo systemctl enable elasticsearch
 sudo systemctl start elasticsearch
+
+# Starting kibana
+sudo systemctl enable kibana
+sudo systemctl start kibana
+
+# Test Elasticsearch and kibana
 curl localhost:9200
+curl localhost:5601/app/kibana
+
+# Check Cluster health
+curl -H "Content-Type: application/json" -XGET localhost:9200/_cat/health?v
 ```
 
+## Exploring Elasticsearch cluster 

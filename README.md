@@ -77,4 +77,208 @@ curl localhost:5601/app/kibana
 curl -H "Content-Type: application/json" -XGET localhost:9200/_cat/health?v
 ```
 
-## Exploring Elasticsearch cluster 
+## Exploring Elasticsearch cluster with CRUD operation
+
+* Go to kibana dashboard and click "Dev Tools". It gives you the option to run CURL commands
+
+```bash
+GET _cat/health?v
+GET /_cat/nodes?v
+GET /_cat/indices?v
+PUT /customer?pretty
+GET /_cat/indices?v
+# customer index will be in yellow as it has only one node[No high availabilty]
+GET /_cat/indices?v&index=customer
+
+# write document on customer index
+PUT customer/_doc/1?pretty
+{
+  "name": "John Doe"
+}
+GET /customer/_doc/1?pretty
+
+# Delete Index
+DELETE /customer?pretty
+GET /_cat/indices?v&index=customer # Not found error
+
+# Update data
+PUT customer/_doc/1?pretty
+{
+  "name": "Akilan"
+}
+GET /customer/_doc/1?pretty
+
+# Post data without id
+POST /customer/_doc?pretty
+{
+  "name": "Jane Doe"
+}
+# Update using POST method
+POST /customer/_doc/1/_update?pretty
+{
+  "doc": { "name": "Jane Doe", "age": 20 }
+}
+
+# Update by script
+POST customer/_doc/1/_update?pretty
+{
+  "script": "ctx._source.age += 5"
+}
+# Elasticsearch provides the ability to update multiple documents given a query condition (like an SQL UPDATE-WHERE statement). See docs-update-by-query API
+
+# Delete document
+DELETE /customer/_doc/1?pretty
+
+# Bulk insert
+POST /customer/_doc/_bulk?pretty
+{"index":{"_id":"1"}}
+{"name": "John Doe" }
+{"index":{"_id":"2"}}
+{"name": "Jane Doe" }
+
+# Bulk Update and delete
+POST /customer/_doc/_bulk?pretty
+{"update":{"_id":"1"}}
+{"doc": { "name": "John Doe becomes Jane Doe" } }
+{"delete":{"_id":"2"}}
+
+# https://www.json-generator.com/ - place to generate some random JSON data
+# Insert data from Json file
+curl -H "Content-Type: application/json" -XPOST "localhost:9200/bank/_doc/_bulk?pretty&refresh" --data-binary "@accounts.json"
+```
+## Exploring Search API
+
+* There are two basic ways to run searches: one is by sending search parameters through the REST request URI and the other by sending them through the REST request body
+  
+```bash
+# search by REST API call
+GET bank/_search?q=*&sort=account_number:asc&pretty
+
+# Search by REST request body
+
+GET bank/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": [
+    {
+      "account_number": {
+        "order": "asc"
+      }
+    }
+  ],
+  "from": 0, 
+  "size": 10
+}
+
+# return two fields, account_number and balance
+GET bank/_search
+{
+  "query": {
+    "match": {
+      "account_number": "20"
+    }
+  },
+  "_source": ["account_number","balance"]
+}
+
+# Below query returns document if address has "mill" or "lane"
+
+GET bank/_search
+{
+  "query": {
+    "match": {
+      "address": "mill lane"
+    }
+  }
+}
+
+# Below query returns document if address has "mill lane" phrase
+GET bank/_search
+{
+  "query": {
+    "match_phrase": {
+      "address": "mill lane"
+    }
+  }
+}
+
+# Boolean query allows us to compose smaller queries into bigger queries using boolean logic
+GET bank/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match" : { "age" : 32 }
+        }
+      ],
+      "must_not": [
+        {
+          "match": {
+            "gender": "M"
+          }
+        }
+      ]
+    }
+  }
+}
+
+# Filter Female between age [23-30] with balance 20k-30k
+GET bank/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        { 
+          "match": {"gender": "F"}
+        },
+        {
+          "range": {
+            "age": {
+              "gte": 23,
+              "lte": 30
+             }
+          }
+        },
+        {
+          "range": {
+            "balance": {
+              "gte": 20000,
+              "lte": 30000
+           }
+          }
+        }
+      ]
+    }
+    
+  }
+}
+
+# Aggregation provide the ability to group and extract statistics from your data
+# State wise number of accounts
+GET bank/_search
+{
+  "size":0, 
+  "aggs": {
+    "group_by_state": {
+      "terms": {
+        "field": "state.keyword"
+      }
+    }
+  }
+}
+# Average balance 
+GET bank/_search
+{
+  "size":0, 
+  "aggs": {
+    "avg_balance": {
+      "avg": {
+        "field": "balance"
+      }
+    }
+  }
+}
+```
